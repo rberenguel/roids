@@ -17,8 +17,7 @@ WelcomeScreen::WelcomeScreen(uint32_t tick) {
 void WelcomeScreen::update(uint32_t tick) {
   if (blit::buttons || tick - startTime >= 10000) {
     state = Menu;
-    scene = new MenuScreen(tick);  // TODO(me) can I do this with a unique_ptr
-                                   // instead? So far I haven't found a way
+    scene = std::make_shared<MenuScreen>(MenuScreen(tick));
   }
 }
 
@@ -57,14 +56,11 @@ void MenuScreen::update(uint32_t tick) {
     switch (selected) {
       case 0:
         state = Game;
-        scene = new GameScreen();  // TODO(me) can I do this with a unique_ptr
-                                   // instead? So far I haven't found a way
+        scene = std::make_shared<GameScreen>(GameScreen());
         return;
       case 1:
         state = Help;
-        scene =
-            new HelpScreen(tick);  // TODO(me) can I do this with a unique_ptr
-                                   // instead? So far I haven't found a way
+        scene = std::make_shared<HelpScreen>(HelpScreen(tick));
         return;
       default:
         break;
@@ -102,8 +98,7 @@ void MenuScreen::render(uint32_t tick) {
 void HelpScreen::update(uint32_t tick) {
   if ((tick > startTime + 200) && blit::buttons) {
     state = Menu;
-    scene = new MenuScreen(tick);  // TODO(me) can I do this with a unique_ptr
-                                   // instead? So far I haven't found a way
+    scene = std::make_shared<MenuScreen>(MenuScreen(tick));
   }
 }
 void HelpScreen::render(uint32_t tick) {
@@ -123,12 +118,10 @@ void HelpScreen::render(uint32_t tick) {
 void HighScoreScreen::update(uint32_t tick) {
   // TODO(me) need to figure out saving properly
   state = Menu;
-  scene = new MenuScreen(tick);  // TODO(me) can I do this with a unique_ptr
-                                 // instead? So far I haven't found a way
+  scene = std::make_shared<MenuScreen>(MenuScreen(tick));
 }
 void HighScoreScreen::render(uint32_t tick) {
   // TODO(me) need to figure out saving properly
   state = Menu;
-  scene = new MenuScreen(tick);  // TODO(me) can I do this with a unique_ptr
-                                 // instead? So far I haven't found a way
+  scene = std::make_shared<MenuScreen>(MenuScreen(tick));
 }

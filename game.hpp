@@ -2,6 +2,7 @@
 
 #pragma once
 #include <list>
+#include <memory>
 #include <vector>
 
 #include "./base.hpp"
@@ -10,7 +11,8 @@
 
 class Asteroid;
 
-class GameScreen : public Scene {
+class GameScreen : public Scene,
+                   public std::enable_shared_from_this<GameScreen> {
  public:
   GameScreen();
   const float RSPEED = 0.02;
@@ -50,15 +52,15 @@ class GameScreen : public Scene {
 };
 
 class Asteroid : public Entity {
-  GameScreen *game;
+  std::shared_ptr<GameScreen> game = nullptr;
 
  public:
   float size = 0;
   Asteroid();
-  Asteroid(GameScreen *game, Point center, Velocity velocity, int sides,
-           float size, float spin);
-  Asteroid(Scene *game, Point center, Velocity velocity, int sides, float size,
-           float spin);
+  Asteroid(std::shared_ptr<GameScreen> game, Point center, Velocity velocity,
+           int sides, float size, float spin);
+  Asteroid(std::shared_ptr<Scene> game, Point center, Velocity velocity,
+           int sides, float size, float spin);
   bool shotCollisionDetection(std::list<Asteroid> *toAdd);
   bool shotCollisionDetectionLoop(Entity *shot, std::list<Asteroid> *toAdd);
   bool breakUpRoid(Velocity v, std::list<Asteroid> *toAdd);

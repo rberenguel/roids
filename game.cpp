@@ -22,7 +22,6 @@ GameScreen::GameScreen() {
   roidList = std::vector<Asteroid>(0);
   ephemeralsList = std::vector<Entity>(0);
   setupPlayer();
-  addSomeRoids();
 }
 
 void GameScreen::update(uint32_t tick) {
@@ -86,6 +85,7 @@ void GameScreen::update(uint32_t tick) {
                    player.center.y + adjustedCenter.y},
              accelerated, 12);
   }
+  //???
 }
 
 void GameScreen::addRoid(Asteroid roid) {
@@ -222,7 +222,10 @@ void GameScreen::addSomeRoids() {
       i--;
       continue;
     }
-    auto foo = Asteroid(this, ctr, vel, sides, size, spin);
+    // TODO(me) I should remove the dependency on game from asteroids.
+    // Currently it looks annoying, because collision detection is _in_
+    // the asteroids. But nothing prevents me from moving it _out_ into game.
+    auto foo = Asteroid(shared_from_this(), ctr, vel, sides, size, spin);
 
     addRoid(foo);
   }
@@ -288,9 +291,7 @@ void GameScreen::explode(Entity player) {
 }
 
 void GameScreen::drawRoids(uint32_t tick) {
-  std::list<Asteroid> toAdd;
   bool added = false;
-
   for (Asteroid &roid : roidList) {
     if (roid.energy <= 0) {
       continue;
@@ -382,8 +383,8 @@ std::vector<Star> GameScreen::starfield(int width, int height, int star_size) {
 
 Asteroid::Asteroid() {}
 
-Asteroid::Asteroid(GameScreen *game, Point center, Velocity velocity, int sides,
-                   float size, float spin) {
+Asteroid::Asteroid(std::shared_ptr<GameScreen> game, Point center,
+                   Velocity velocity, int sides, float size, float spin) {
   this->game = game;
   this->center = center;
   this->velocity = velocity;

@@ -7,12 +7,16 @@
 #include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
 
 GameState state = Welcome;
-Scene *scene;  // TODO(me) can I do this with a unique_ptr instead? So far I
-               // haven't found a way
+std::shared_ptr<Scene> scene =
+    nullptr;  // I can get by with a shared pointer and not a unique one because
+              // in the scene update methods I destroy "this". With the shared
+              // pointer "this" will live long enough to become "that" and be
+              // destroyed later. Thanks rn for explaining (better and more
+              // right than this comment)
 
 void init() {
   blit::set_screen_mode(blit::ScreenMode::hires);
-  scene = new WelcomeScreen(0);
+  scene = std::make_shared<WelcomeScreen>(WelcomeScreen(0));
 }
 
 void update(uint32_t tick) { scene->update(tick); }
