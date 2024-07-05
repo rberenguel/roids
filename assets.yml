@@ -1,0 +1,14 @@
+# All these assets will be created in assets.cpp, which CMake will
+# link automagically.
+# References can be picked up by including assets.hpp
+
+font_asset.cpp:
+  monoid-regular.ttf:
+    name: monoid_regular
+    height: 13
+  monoid-regular2.ttf:
+    name: monoid_small
+    height: 8
+  monoid-bold.ttf:
+    name: monoid_bold
+    height: 18

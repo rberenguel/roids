@@ -1,0 +1,10 @@
+title: Roids
+description: Asteroids clone based on Hyperoid by Edward Hutchins
+author: Ruben Berenguel
+splash:
+  file: assets/image.png
+icon:
+  file: assets/icon.png
+version: v0.0.2
+category: game
+url: https://mostlymaths.net

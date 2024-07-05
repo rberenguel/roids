@@ -1,0 +1,5 @@
+build/**
+build.pico/**
+build.mac/**
+build.em/**
+.DS_Store
