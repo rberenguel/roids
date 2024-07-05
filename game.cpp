@@ -291,6 +291,7 @@ void GameScreen::explode(Entity player) {
 }
 
 void GameScreen::drawRoids(uint32_t tick) {
+  std::list<Asteroid> toAdd;
   bool added = false;
   for (Asteroid &roid : roidList) {
     if (roid.energy <= 0) {
