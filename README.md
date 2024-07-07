@@ -12,7 +12,7 @@ Thanks `rn` for all the help with C++. Anything that looks wonky is because I di
 
 Here is a short video of gameplay with the Mac build. The web version looks pretty much the same, and the Pico version is just a portable, really small one. You can see a picture of the endgame screen below the video.
 
-VIDEO
+https://github.com/rberenguel/roids/assets/2410938/21bec51b-3538-447d-b5a5-b99a3bccf7fa
 
 ![](media/endgame-pico.jpg)
 
