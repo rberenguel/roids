@@ -1,0 +1,25 @@
+version: '3'
+
+tasks:
+  mac:
+    dir: build.mac
+    cmds:
+      - make -j 8
+  pico:
+    dir: build.pico
+    cmds:
+      - make -j 8
+  emsc:
+    dir: build.em
+    cmds:
+      - make -j 8
+      - rm roids/*.*
+      - rm roids.zip || true
+      - mv roids.html roids/index.html
+      - mv roids.wasm roids/
+      - mv roids.js roids/
+      - zip -9 roids.zip ./roids/*
+  pub:
+    deps: [pico, emsc]
+    cmds:
+      - open https://itch.io/game/edit/2534124

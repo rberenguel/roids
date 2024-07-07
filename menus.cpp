@@ -56,7 +56,7 @@ void MenuScreen::update(uint32_t tick) {
     switch (selected) {
       case 0:
         state = Game;
-        scene = std::make_shared<GameScreen>(GameScreen());
+        scene = std::make_shared<GameScreen>(GameScreen(tick));
         return;
       case 1:
         state = Help;

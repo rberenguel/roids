@@ -14,8 +14,9 @@
 #include "./base.hpp"
 #include "./scene.hpp"
 
-GameScreen::GameScreen() {
+GameScreen::GameScreen(uint32_t tick) {
   stars_size = 250;
+  wait_start = tick;
   stars = starfield(blit::screen.bounds.w, blit::screen.bounds.h, stars_size);
 
   // Setup player, set as separate function eventually
@@ -92,7 +93,6 @@ void GameScreen::update(uint32_t tick) {
                    player.center.y + adjustedCenter.y},
              accelerated, 12);
   }
-  //???
 }
 
 void GameScreen::addRoid(Asteroid roid) {
@@ -116,23 +116,36 @@ void GameScreen::showInfo(uint32_t tick) {
     blit::screen.text(std::to_string(tick), blit::minimal_font,
                       blit::Point(2, blit::screen.bounds.h - 8));
   }
-  blit::screen.pen = YELLOW;
-  blit::screen.text(std::to_string(score), blit::minimal_font,
-                    blit::Point(2, 2));
-  blit::screen.pen = BRIGHTGREEN;
-  blit::screen.text(std::to_string(lives), blit::minimal_font,
-                    blit::Point(2, 8));
-  blit::screen.pen = RED;
-  std::string p_torpedoes(torpedoes, '*');
-  blit::screen.text(p_torpedoes, blit::minimal_font, blit::Point(2, 14));
-  blit::screen.pen = BLUE;
-  blit::screen.text("L:" + std::to_string(level), blit::minimal_font,
-                    blit::Point(70, 2));
-  blit::screen.pen = MAGENTA;
-  std::stringstream ss;
-  ss << std::fixed << std::setprecision(1);
-  ss << multiplier;
-  blit::screen.text("X:" + ss.str(), blit::minimal_font, blit::Point(100, 2));
+  if (level > 0) {
+    blit::screen.pen = YELLOW;
+    blit::screen.text(std::to_string(score), blit::minimal_font,
+                      blit::Point(2, 2));
+    blit::screen.pen = BRIGHTGREEN;
+    blit::screen.text(std::to_string(lives), blit::minimal_font,
+                      blit::Point(2, 8));
+    blit::screen.pen = RED;
+    std::string p_torpedoes(torpedoes, '*');
+    blit::screen.text(p_torpedoes, blit::minimal_font, blit::Point(2, 14));
+    blit::screen.pen = BLUE;
+    blit::screen.text("L:" + std::to_string(level), blit::minimal_font,
+                      blit::Point(70, 2));
+    blit::screen.pen = MAGENTA;
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1);
+    ss << multiplier;
+    blit::screen.text("X:" + ss.str(), blit::minimal_font, blit::Point(100, 2));
+  } else {
+    blit::screen.pen = YELLOW;
+    int32_t left = START_DELAY - (tick - wait_start);
+    std::string str = "GET READY!";
+    if (left <= 0) {
+      blit::screen.pen = RED;
+    }
+    if (left < fabs(START_DELAY / 2)) {
+      blit::screen.pen = RED;
+    }
+    blit::screen.text(str, blit::minimal_font, blit::Point(2, 2));
+  }
 }
 
 void GameScreen::render(uint32_t tick) {
@@ -207,27 +220,29 @@ void GameScreen::render(uint32_t tick) {
   drawEphemerals();
   drawShots();
   showInfo(tick);
+  if (roidList.size() == 0) {
+    if (level == 0 && (tick - wait_start < START_DELAY)) {
+      return;
+    }
+    invulnerable = tick + 2000;
+    previousTorpedo = tick;
+    previousShot = tick;
+    stars = starfield(blit::screen.bounds.w, blit::screen.bounds.h, stars_size);
+    addSomeRoids();
+  }
   if (tick % 100 == 0) {
     flameList = hardPurge(&flameList, &availableFlame);
     shotList = hardPurge(&shotList, &availableShot);
     torpedoList = hardPurge(&torpedoList, &availableTorpedo);
     roidList = hardPurge(&roidList, &availableRoid);
     ephemeralsList = hardPurge(&ephemeralsList, &availableEphemeral);
-    if (roidList.size() == 0) {
-      invulnerable = tick + 2000;
-      previousTorpedo = tick;
-      previousShot = tick;
-      stars =
-          starfield(blit::screen.bounds.w, blit::screen.bounds.h, stars_size);
-      addSomeRoids();
-    }
   }
 }
 
 void GameScreen::addSomeRoids() {
   level += 1;
   multiplier += 0.1;
-  for (uint16_t i = 0; i < 8 + blit::random() % 10; i++) {
+  for (uint16_t i = 0; i < fmin(level, 10) + blit::random() % 5; i++) {
     float x = blit::random() % blit::screen.bounds.w;
     float y = blit::random() % blit::screen.bounds.h;
     float vx = 0.3 * blit::random() / (RAND_MAX + 1.0);

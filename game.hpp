@@ -13,9 +13,10 @@ class Asteroid;
 
 class GameScreen : public Scene {
  public:
-  GameScreen();
+  GameScreen(uint32_t tick);
   const float RSPEED = 0.02;
   const float ACCEL = .015;
+  const uint32_t START_DELAY = 1000;
   const uint32_t FIRERATE = 100;      // Gap in milliseconds between shots
   const uint32_t TORPEDORATE = 1000;  // Gap in milliseconds between torpedoes
   bool paused = false;
@@ -30,6 +31,7 @@ class GameScreen : public Scene {
   uint16_t lives = 3;
   uint16_t score = 0;
   uint16_t level = 0;
+  uint32_t wait_start = 0;
   float multiplier = 0.9;  // Yeah I know
   uint16_t torpedoes = 3;
   uint16_t addedLife = 0;
