@@ -12,6 +12,8 @@
 #define M_TWOPI 2 * M_PI
 
 extern blit::Pen YELLOW;
+extern blit::Pen BLUE;
+extern blit::Pen MAGENTA;
 extern blit::Pen CYAN;
 extern blit::Pen SUBTLY_CYAN;
 extern blit::Pen DARKCYAN;

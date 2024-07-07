@@ -14,6 +14,8 @@ const blit::Font monoid_b(monoid_bold);
 const blit::Font monoid_s(monoid_small);
 
 blit::Pen YELLOW = blit::hsv_to_rgba(60 / 360.0, 0.9, 0.8);
+blit::Pen BLUE = blit::hsv_to_rgba(220 / 360.0, 0.9, 0.7);
+blit::Pen MAGENTA = blit::hsv_to_rgba(300 / 360.0, 0.9, 0.7);
 blit::Pen CYAN = blit::hsv_to_rgba(180 / 360.0, 0.9, 0.8);
 blit::Pen SUBTLY_CYAN = blit::hsv_to_rgba(180 / 360.0, 0.5, 0.8);
 blit::Pen DARKCYAN = blit::hsv_to_rgba(180 / 360.0, 0.9, 0.3);

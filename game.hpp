@@ -11,8 +11,7 @@
 
 class Asteroid;
 
-class GameScreen : public Scene,
-                   public std::enable_shared_from_this<GameScreen> {
+class GameScreen : public Scene {
  public:
   GameScreen();
   const float RSPEED = 0.02;
@@ -23,13 +22,15 @@ class GameScreen : public Scene,
   uint32_t invulnerable = 0;
   std::vector<Asteroid> roidList = {};
   bool availableRoid = false;
-  int previousShot = 0;
-  int previousTorpedo = 0;
+  uint32_t previousShot = 0;
+  uint32_t previousTorpedo = 0;
   std::vector<Star> stars;
   int stars_size;
 
   uint16_t lives = 3;
   uint16_t score = 0;
+  uint16_t level = 0;
+  float multiplier = 0.9;  // Yeah I know
   uint16_t torpedoes = 3;
   uint16_t addedLife = 0;
   uint16_t addedTorpedo = 0;
@@ -49,6 +50,14 @@ class GameScreen : public Scene,
   void addSomeRoids();
   void drawRoids(uint32_t tick);
   void showInfo(uint32_t tick);
+
+  bool shotCollisionDetection(Asteroid *roid, std::list<Asteroid> *toAdd);
+  bool shotCollisionDetectionLoop(Asteroid *roid, Entity *shot,
+                                  std::list<Asteroid> *toAdd);
+  bool breakUpRoid(Asteroid *roid, Velocity v, std::list<Asteroid> *toAdd);
+  bool playerCollision(Asteroid *roid, std::list<Asteroid> *toAdd,
+                       uint32_t tick);
+  void elasticCollision(Asteroid *roid);
 };
 
 class Asteroid : public Entity {
@@ -57,15 +66,8 @@ class Asteroid : public Entity {
  public:
   float size = 0;
   Asteroid();
-  Asteroid(std::shared_ptr<GameScreen> game, Point center, Velocity velocity,
-           int sides, float size, float spin);
-  Asteroid(std::shared_ptr<Scene> game, Point center, Velocity velocity,
-           int sides, float size, float spin);
-  bool shotCollisionDetection(std::list<Asteroid> *toAdd);
-  bool shotCollisionDetectionLoop(Entity *shot, std::list<Asteroid> *toAdd);
-  bool breakUpRoid(Velocity v, std::list<Asteroid> *toAdd);
-  bool playerCollision(std::list<Asteroid> *toAdd, uint32_t tick);
-  void elasticCollision();
+  Asteroid(Point center, Velocity velocity, int sides, float size, float spin,
+           float playerR);
 };
 
 template <typename T>

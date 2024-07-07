@@ -6,7 +6,10 @@
 
 #include <array>
 #include <cmath>
+#include <iomanip>  // for std::setprecision
+#include <iostream>
 #include <list>
+#include <sstream>
 
 #include "./base.hpp"
 #include "./scene.hpp"
@@ -52,13 +55,17 @@ void GameScreen::update(uint32_t tick) {
   if (blit::buttons.pressed & blit::Button::B) {
     invulnerable = tick + 1000;
   }
-  if (lives == 0 && (blit::buttons.pressed & blit::Button::X)) {
+  if (lives == 0 && (blit::buttons.pressed & blit::Button::Y)) {
     lives = 3;
+    torpedoes = 3;
     score = 0;
+    level = 0;
+    multiplier = 1.0;
     roidList.clear();
     availableRoid = false;
     stars = starfield(blit::screen.bounds.w, blit::screen.bounds.h, stars_size);
     addSomeRoids();
+    return;
   }
   if (blit::buttons.pressed & blit::Button::Y) {
     paused = true;
@@ -116,8 +123,16 @@ void GameScreen::showInfo(uint32_t tick) {
   blit::screen.text(std::to_string(lives), blit::minimal_font,
                     blit::Point(2, 8));
   blit::screen.pen = RED;
-  std::string p_torpedoes(torpedoes, '.');
+  std::string p_torpedoes(torpedoes, '*');
   blit::screen.text(p_torpedoes, blit::minimal_font, blit::Point(2, 14));
+  blit::screen.pen = BLUE;
+  blit::screen.text("L:" + std::to_string(level), blit::minimal_font,
+                    blit::Point(70, 2));
+  blit::screen.pen = MAGENTA;
+  std::stringstream ss;
+  ss << std::fixed << std::setprecision(1);
+  ss << multiplier;
+  blit::screen.text("X:" + ss.str(), blit::minimal_font, blit::Point(100, 2));
 }
 
 void GameScreen::render(uint32_t tick) {
@@ -128,7 +143,7 @@ void GameScreen::render(uint32_t tick) {
   if (lives == 0) {
     showInfo(tick);
     blit::screen.text(
-        "Game over\n Press X to continue", monoid,
+        "Game over\n Press Y to continue", monoid,
         blit::Point(2, static_cast<int>(blit::screen.bounds.h / 6)));
     blit::screen.pen = BRIGHTGREEN;
     blit::screen.text(
@@ -200,6 +215,8 @@ void GameScreen::render(uint32_t tick) {
     ephemeralsList = hardPurge(&ephemeralsList, &availableEphemeral);
     if (roidList.size() == 0) {
       invulnerable = tick + 2000;
+      previousTorpedo = tick;
+      previousShot = tick;
       stars =
           starfield(blit::screen.bounds.w, blit::screen.bounds.h, stars_size);
       addSomeRoids();
@@ -208,6 +225,8 @@ void GameScreen::render(uint32_t tick) {
 }
 
 void GameScreen::addSomeRoids() {
+  level += 1;
+  multiplier += 0.1;
   for (uint16_t i = 0; i < 8 + blit::random() % 10; i++) {
     float x = blit::random() % blit::screen.bounds.w;
     float y = blit::random() % blit::screen.bounds.h;
@@ -222,11 +241,7 @@ void GameScreen::addSomeRoids() {
       i--;
       continue;
     }
-    // TODO(me) I should remove the dependency on game from asteroids.
-    // Currently it looks annoying, because collision detection is _in_
-    // the asteroids. But nothing prevents me from moving it _out_ into game.
-    auto foo = Asteroid(shared_from_this(), ctr, vel, sides, size, spin);
-
+    auto foo = Asteroid(ctr, vel, sides, size, spin, player.r);
     addRoid(foo);
   }
   for (uint8_t i = 0; i < roidList.size(); i++) {
@@ -245,7 +260,7 @@ void GameScreen::addSomeRoids() {
 void GameScreen::explodeAt(int count, Point center, Velocity velocity,
                            Point angleFan) {
   // angleFan is a "point" to control whether explosions are fully radial
-  // or can also be like rebounding from a shot against an asteroid.
+  // or can also be like rebounding from a shot against an asteroid->
   for (int i = 0; i < count; i++) {
     float randAngle = angleFan.x + 0.5 * angleFan.y -
                       angleFan.y * rand()  // NOLINT(runtime/threadsafe_fn)
@@ -297,10 +312,10 @@ void GameScreen::drawRoids(uint32_t tick) {
     if (roid.energy <= 0) {
       continue;
     }
-    roid.elasticCollision();
+    elasticCollision(&roid);
     moveEntity(&roid);
-    added |= roid.shotCollisionDetection(&toAdd);
-    added |= roid.playerCollision(&toAdd, tick);
+    added |= shotCollisionDetection(&roid, &toAdd);
+    added |= playerCollision(&roid, &toAdd, tick);
     drawEntity(static_cast<Entity *>(&roid));
   }
   if (added) {
@@ -384,9 +399,9 @@ std::vector<Star> GameScreen::starfield(int width, int height, int star_size) {
 
 Asteroid::Asteroid() {}
 
-Asteroid::Asteroid(std::shared_ptr<GameScreen> game, Point center,
-                   Velocity velocity, int sides, float size, float spin) {
-  this->game = game;
+Asteroid::Asteroid(Point center, Velocity velocity, int sides, float size,
+                   float spin, float playerR) {
+  std::cout << "starting" << std::endl;
   this->center = center;
   this->velocity = velocity;
   kind = EntityKind::kRoid;
@@ -398,7 +413,7 @@ Asteroid::Asteroid(std::shared_ptr<GameScreen> game, Point center,
   int numPoints = sides + 1;
   mesh.points = std::vector<Point>(numPoints);
   mesh.presentation = std::vector<Point>(numPoints);
-
+  std::cout << "ready" << std::endl;
   const auto a = M_TWOPI / sides;
   for (int i = 0; i < numPoints; i++) {
     const float wiggled = i * a + 0.3 * a +
@@ -413,42 +428,46 @@ Asteroid::Asteroid(std::shared_ptr<GameScreen> game, Point center,
   }
   mesh.points[sides] = mesh.points[0];
   mesh.presentation[sides] = mesh.presentation[0];
+  std::cout << "prepared" << std::endl;
   for (int i = 0; i < numPoints; i++) {
-    rotateTo(&mesh.points[i], &mesh.presentation[i], game->player.r);
+    rotateTo(&mesh.points[i], &mesh.presentation[i], playerR);
   }
+  std::cout << "rotated" << std::endl;
   mesh.color = GREY;
   mesh.fill = DARKGREY;
   mesh.kind = MeshKind::kPolygon;
   meshes[0] = mesh;
+  std::cout << "done" << std::endl;
 }
 
-bool Asteroid::shotCollisionDetection(std::list<Asteroid> *toAdd) {
+bool GameScreen::shotCollisionDetection(Asteroid *roid,
+                                        std::list<Asteroid> *toAdd) {
   bool addedAsteroids = false;
-  for (Entity &shot : game->shotList) {
-    addedAsteroids |= shotCollisionDetectionLoop(&shot, toAdd);
+  for (Entity &shot : shotList) {
+    addedAsteroids |= shotCollisionDetectionLoop(roid, &shot, toAdd);
   }
-  for (Entity &torpedo : game->torpedoList) {
-    addedAsteroids |= shotCollisionDetectionLoop(&torpedo, toAdd);
+  for (Entity &torpedo : torpedoList) {
+    addedAsteroids |= shotCollisionDetectionLoop(roid, &torpedo, toAdd);
   }
   return addedAsteroids;
 }
 
-bool Asteroid::shotCollisionDetectionLoop(Entity *shot,
-                                          std::list<Asteroid> *toAdd) {
+bool GameScreen::shotCollisionDetectionLoop(Asteroid *roid, Entity *shot,
+                                            std::list<Asteroid> *toAdd) {
   bool addedAsteroids = false;
   if (shot->energy == 0) {
     return addedAsteroids;
   }
   auto sct = shot->center;
-  float distq = sqdist(&sct, &center);
-  if (distq <= 1.04 * (size * size)) {
+  float distq = sqdist(&sct, &roid->center);
+  if (distq <= 1.04 * (roid->size * roid->size)) {
     auto shot_initial_energy = shot->energy;
     int scaled_explosion_energy =
         static_cast<int>(floor(sqrt(shot_initial_energy)));
-    game->explodeAt(scaled_explosion_energy, shot->center, shot->velocity,
-                    Point{M_PI, 0.2});
+    explodeAt(scaled_explosion_energy, shot->center, shot->velocity,
+              Point{M_PI, 0.2});
     if (shot->kind == EntityKind::kPhotonTorpedo) {
-      shot->energy -= size;
+      shot->energy -= roid->size;
     }
     if (shot->kind == EntityKind::kPlasmaBullet) {
       shot->energy = 0;
@@ -459,15 +478,15 @@ bool Asteroid::shotCollisionDetectionLoop(Entity *shot,
       Mesh mesh = Mesh{};
       mesh.points = std::vector<Point>(2);
       mesh.presentation = std::vector<Point>(2);
-      float dx = sct.x - center.x;
-      float dy = sct.y - center.y;
-      // This vector points to the center of the asteroid.
+      float dx = sct.x - roid->center.x;
+      float dy = sct.y - roid->center.y;
+      // This vector points to the center of the asteroid->
       // Adding another crack randomly could make things more interesting.
       Point p = Point{dx, dy};
       Point pp = Point{dx, dy};
-      rotateTo(&p, &p, -r);
+      rotateTo(&p, &p, -roid->r);
       Point q = Point{0.9f * dx, 0.9f * dy};
-      rotateTo(&q, &q, -r);
+      rotateTo(&q, &q, -roid->r);
       Point qp = q;
       mesh.points[0] = p;
       mesh.points[1] = q;
@@ -475,12 +494,12 @@ bool Asteroid::shotCollisionDetectionLoop(Entity *shot,
       mesh.presentation[1] = qp;
       mesh.kind = MeshKind::kPolygon;
       mesh.color = RED;
-      meshes.push_back(mesh);
+      roid->meshes.push_back(mesh);
     }
 
     // This is "half" of a elastic collision, because the bullet or torpedo is
     // not affected by the impact
-    float m1 = size;
+    float m1 = roid->size;
     float m2 = 0.0;  // Shot mass
     if (shot->kind == EntityKind::kPhotonTorpedo) {
       m2 = 0.5;
@@ -492,18 +511,18 @@ bool Asteroid::shotCollisionDetectionLoop(Entity *shot,
       m2 = 0.05;
     }
     float total = m1 + m2;
-    Velocity v1 = velocity;
+    Velocity v1 = roid->velocity;
     Velocity v2 = shot->velocity;
     Velocity v1mv2 = Velocity{v1.x - v2.x, v1.y - v2.y};
-    Velocity p1mp2 =
-        Velocity{center.x - shot->center.x, center.y - shot->center.y};
+    Velocity p1mp2 = Velocity{roid->center.x - shot->center.x,
+                              roid->center.y - shot->center.y};
     float dot1 = dot(&v1mv2, &p1mp2);
     float r1 = 2 * m2 / total;
     Velocity newThisVelocity = Velocity{v1.x - r1 * dot1 / distq * p1mp2.x,
                                         v1.y - r1 * dot1 / distq * p1mp2.y};
-    this->velocity = newThisVelocity;
+    roid->velocity = newThisVelocity;
 
-    energy -= shot_initial_energy;  // This is new
+    roid->energy -= shot_initial_energy;  // This is new
     if (shot->kind == EntityKind::kPhotonTorpedo) {
       shot->velocity.x *= 0.8;
       shot->velocity.y *= 0.8;
@@ -515,69 +534,78 @@ bool Asteroid::shotCollisionDetectionLoop(Entity *shot,
       shot->energy = 0;
     }
 
-    if (energy < 25) {
-      meshes[0].color = RED;
-      meshes[0].fill = DARKERRED;
+    if (roid->energy < 25) {
+      roid->meshes[0].color = RED;
+      roid->meshes[0].fill = DARKERRED;
     }
-    if (energy <= 0) {
-      energy = 0;
-      game->score += size;
-      addedAsteroids |= breakUpRoid(shot->velocity, toAdd);
+    if (roid->energy <= 0) {
+      roid->energy = 0;
+      score += floor(multiplier * roid->size);
+      addedAsteroids |= breakUpRoid(roid, shot->velocity, toAdd);
     }
   }
   return addedAsteroids;
 }
 
-bool Asteroid::playerCollision(std::list<Asteroid> *toAdd, uint32_t tick) {
+bool GameScreen::playerCollision(Asteroid *roid, std::list<Asteroid> *toAdd,
+                                 uint32_t tick) {
   // Player collision
   bool addedAsteroids = false;
-  if (energy <= 0) {
+  if (roid->energy <= 0) {
     return false;
   }
-  if (sqrt(sqdist(&(game->player.center), &center)) <= 1.05 * size) {
-    if (tick < game->invulnerable) {
+  if (sqrt(sqdist(&(player.center), &roid->center)) <= 1.05 * roid->size) {
+    if (tick < invulnerable) {
       return false;
     }
-    game->lives--;
-    game->explode(game->player);
-    game->invulnerable = tick + 2000;
-    energy = 0;
-    addedAsteroids |= breakUpRoid(game->player.velocity, toAdd);
-    game->player.center = Point(static_cast<float>(blit::screen.bounds.w / 2),
-                                static_cast<float>(blit::screen.bounds.h / 2));
-    game->player.velocity = Velocity{0, 0};
+    lives--;
+    multiplier = 1.0;
+    explode(player);
+    invulnerable = tick + 2000;
+    roid->energy = 0;
+    addedAsteroids |= breakUpRoid(roid, player.velocity, toAdd);
+    player.center = Point(static_cast<float>(blit::screen.bounds.w / 2),
+                          static_cast<float>(blit::screen.bounds.h / 2));
+    player.velocity = Velocity{0, 0};
   }
   return addedAsteroids;
 }
 
-void Asteroid::elasticCollision() {
-  if (collided) {
+void speedLimit(Velocity *v, float limit) {
+  float sx = v->x > 0 ? 1 : -1;
+  float sy = v->x > 0 ? 1 : -1;
+  v->x = sx * fmin(fabs(v->x), limit);
+  v->y = sy * fmin(fabs(v->y), limit);
+}
+
+void GameScreen::elasticCollision(Asteroid *roid) {
+  if (roid->collided) {
     return;
   }
-  for (Asteroid &other : game->roidList) {
-    if (&other == this) {
+  for (Asteroid &other : roidList) {
+    if (&other == roid) {
       continue;
     }
-    float span = abs(size + other.size);
+    float span = abs(roid->size + other.size);
     if (other.energy <= 0) {
       continue;
     }
     if (other.collided) {
       continue;
     }
-    float distq = sqdist(&other.center, &center);
+    float distq = sqdist(&other.center, &roid->center);
     if (distq <= 1.1 * span * span) {
-      float m1 = size;
+      float m1 = roid->size;
       float m2 = other.size;
       float total = m1 + m2;
-      Velocity v1 = velocity;
+      Velocity v1 = roid->velocity;
       Velocity v2 = other.velocity;
       Velocity v1mv2 = Velocity{v1.x - v2.x, v1.y - v2.y};
       Velocity v2mv1 = Velocity{v2.x - v1.x, v2.y - v1.y};
-      Velocity p1mp2 =
-          Velocity{center.x - other.center.x, center.y - other.center.y};
-      Velocity p2mp1 =
-          Velocity{other.center.x - center.x, other.center.y - center.y};
+      Velocity p1mp2 = Velocity{roid->center.x - other.center.x,
+                                roid->center.y - other.center.y};
+      Velocity p2mp1 = Velocity{other.center.x - roid->center.x,
+                                other.center.y - roid->center.y};
       float dot1 = dot(&v1mv2, &p1mp2);
       float dot2 = dot(&v2mv1, &p2mp1);
       if (abs(dot1) < 0.1) {
@@ -592,7 +620,11 @@ void Asteroid::elasticCollision() {
                                           v1.y - r1 * dot1 / distq * p1mp2.y};
       Velocity newOtherVelocity = Velocity{v2.x - r2 * dot2 / distq * p2mp1.x,
                                            v2.y - r2 * dot2 / distq * p2mp1.y};
-      this->velocity = newThisVelocity;
+      // Add a speed limit to prevent some strange artifacts I have not found
+      // the source of
+      speedLimit(&newThisVelocity, 10);
+      speedLimit(&newOtherVelocity, 10);
+      roid->velocity = newThisVelocity;
       other.velocity = newOtherVelocity;
       other.collided = true;
       if (distq < 0.8 * span * span) {
@@ -600,32 +632,32 @@ void Asteroid::elasticCollision() {
         // It still is wrong, there is some sort of numerical instability
         // somewhere.
         int jiggle = 1 + 1.0 * blit::random() / (RAND_MAX + 1.0);
-        this->center.x += jiggle * newOtherVelocity.x;
-        this->center.y += -jiggle * newOtherVelocity.y;
+        roid->center.x += jiggle * newOtherVelocity.x;
+        roid->center.y += -jiggle * newOtherVelocity.y;
       }
     }
   }
 }
 
-bool Asteroid::breakUpRoid(Velocity breakUpDirection,
-                           std::list<Asteroid> *toAdd) {
-  float r1 = size * (0.2 + .8 * blit::random() / (RAND_MAX + 1.0));
+bool GameScreen::breakUpRoid(Asteroid *roid, Velocity breakUpDirection,
+                             std::list<Asteroid> *toAdd) {
+  float r1 = roid->size * (0.2 + .8 * blit::random() / (RAND_MAX + 1.0));
   const float f = 1.5;
-  game->explodeAt(5, center, Velocity{r1, 0}, Point{0, 2 * M_PI});
-  game->explode(Entity{*this});
+  explodeAt(5, roid->center, Velocity{r1, 0}, Point{0, 2 * M_PI});
+  explode(Entity{*roid});
   float vx = -breakUpDirection.y / sqrt(n(&breakUpDirection));
   float vy = breakUpDirection.x / sqrt(n(&breakUpDirection));
-  int newSides = static_cast<int>(meshes[0].points.size() - 1);
-  int newSize = size / 2.0;
+  int newSides = static_cast<int>(roid->meshes[0].points.size() - 1);
+  int newSize = roid->size / 2.0;
   if (newSides > 5 && newSize > 5.0) {
-    Point newCenter1 =
-        Point{center.x + f * size * vx, center.y + f * size * vy};
-    Point newCenter2 =
-        Point{center.x - f * size * vx, center.y + f * size * vy};
-    (*toAdd).push_back(Asteroid(game, newCenter1, Velocity{vx, vy}, newSides,
-                                newSize, this->spin));
-    (*toAdd).push_back(Asteroid(game, newCenter2, Velocity{-vx, -vy}, newSides,
-                                newSize, -this->spin));
+    Point newCenter1 = Point{roid->center.x + f * roid->size * vx,
+                             roid->center.y + f * roid->size * vy};
+    Point newCenter2 = Point{roid->center.x - f * roid->size * vx,
+                             roid->center.y + f * roid->size * vy};
+    (*toAdd).push_back(Asteroid(newCenter1, Velocity{vx, vy}, newSides, newSize,
+                                roid->spin, player.r));
+    (*toAdd).push_back(Asteroid(newCenter2, Velocity{-vx, -vy}, newSides,
+                                newSize, -roid->spin, player.r));
     return true;
   }
   return false;

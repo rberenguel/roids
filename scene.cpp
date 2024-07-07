@@ -58,14 +58,14 @@ void Scene::addPlasmaBullet() {
   bu.meshes = std::vector<Mesh>(1);
   mesh.points = std::vector<Point>(numPoints);
   mesh.presentation = std::vector<Point>(numPoints);
-  mesh.points[0] = Point{1, 0};
+  mesh.points[0] = Point{0, 0};
   mesh.points[1] = Point{2, 1};
   mesh.points[2] = Point{2, -1};
-  mesh.points[3] = Point{1, 0};
-  mesh.presentation[0] = Point{1, 0};
+  mesh.points[3] = Point{0, 0};
+  mesh.presentation[0] = Point{0, 0};
   mesh.presentation[1] = Point{2, 1};
   mesh.presentation[2] = Point{2, -1};
-  mesh.presentation[3] = Point{1, 0};
+  mesh.presentation[3] = Point{0, 0};
   for (int i = 0; i < numPoints; i++) {
     rotateTo(&mesh.points[i], &mesh.presentation[i], player.r);
   }
