@@ -4,7 +4,7 @@
 
 #include "./base.hpp"
 #include "./game.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 WelcomeScreen::WelcomeScreen(uint32_t tick) {
   startTime = tick;

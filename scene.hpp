@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "./base.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 class Scene {
  public:

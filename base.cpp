@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "./font_asset.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 const blit::Font monoid(monoid_regular);
 const blit::Font monoid_b(monoid_bold);

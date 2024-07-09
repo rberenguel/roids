@@ -7,7 +7,7 @@
 
 #include "./main.hpp"
 #include "./scene.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 class WelcomeScreen : public Scene {
  public:

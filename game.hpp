@@ -7,13 +7,13 @@
 
 #include "./base.hpp"
 #include "./scene.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 class Asteroid;
 
 class GameScreen : public Scene {
  public:
-  GameScreen(uint32_t tick);
+  explicit GameScreen(uint32_t tick);
   const float RSPEED = 0.02;
   const float ACCEL = .015;
   const uint32_t START_DELAY = 1000;

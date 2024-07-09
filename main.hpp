@@ -4,7 +4,7 @@
 
 #include "./base.hpp"
 #include "./scene.hpp"
-#include "/Users/ruben/code/32blit-sdk/32blit/32blit.hpp"
+#include "32blit.hpp"  // NOLINT(build/include_subdir)
 
 extern GameState state;
 extern std::shared_ptr<Scene> scene;
